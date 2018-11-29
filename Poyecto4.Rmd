@@ -26,6 +26,9 @@ library(RColorBrewer)
 
 # Introducción
 
+Las intoxicaciones por pesticidas son un problema de salud pública a nivel mundial debido a la alta morbilidad y mortalidad que pueden causar. Dentro de la categoría de intoxicaciones por pesticidas se destacan causas como el intento suicida el cual representa uno de los casos más graves de intoxicación, la causa ocupacional, principalmente en los trabajadores dedicados a labores agrícolas y la causa accidental, la cual es muy frecuente en niños. Los efectos que pueden producir los plaguicidas en las poblaciones expuestas dependen de la toxicidad, la dosis, la forma de ingreso al organismo y el tiempo de exposición. (Martínez & Gómez, 2007, pp.190). 
+
+
 El objetivo es determinar si existe correlación espacial para los casos de intoxicaciones por pesticidas, tomando en cuenta el sexo,edad,causa de intoxicación y ruta de ingreso del pesticida.
 
 La pregunta de investigación planteada es ¿Existen conglomerados que se puedan localizar geográficamente por cantones para los casos de intoxicaciones por pesticidas?
@@ -406,12 +409,12 @@ lm.morantest(lm(temp$llamadas_10mil ~ 1, temp), listw=temp2_nb_W)
 
 #Referencias
 
+Martínez, C., Gómez, S. (2007). Riesgo genotóxico por exposición a plaguicidas en trabajadores agrícolas. Revista Internacional de Contaminación Ambiental: 23 (4), 185-200.
 
 
+Grillet,M.,Martínez,J.,Barrera,R.(2009). Focos calientes de transmisión de malaria: Implicaciones para un control orientado y efectivo en Venezuela.Boletin de Malariologia y salud Ambiental:29(2),193-208.
 
-
-
-
+Santamaría, C.(2003).El análisis espacial como herramienta para evaluar alarmas por cáncer. Población y Salud en Mesoamerica:1(1),1-9.
 
 
 
