@@ -21,6 +21,7 @@ library(spatstat)
 library(raster)
 library(rgdal)
 library(spdep)
+library(RColorBrewer)
 ```
 
 # Introducción
@@ -172,7 +173,7 @@ spplot(temp, "intoxicaciones")
 
 - Reina
 
-```{r}
+```{r,include=FALSE}
 
 #library(spdep)
 
@@ -187,7 +188,7 @@ plot(temp1_nb, coordinates(temp), pch = 19, cex = 0.6, add = T)
 
 - Torre
 
-```{r}
+```{r,include=FALSE}
 # Torre
 temp2_nb <- poly2nb(temp, queen = F)
 plot(shp, axes=TRUE, border="gray")
@@ -199,7 +200,7 @@ plot(temp2_nb, coordinates(temp), pch = 19, cex = 0.6, add = T)
 
 - 1 Vecino
 
-```{r}
+```{r,include=FALSE}
 # kNN con 1 vecino
 temp8_nb <- knn2nb(knearneigh(coords, k=1), row.names=IDs)
 plot(shp, axes=TRUE, border="gray")
@@ -209,7 +210,7 @@ plot(temp8_nb, coordinates(temp), pch=19, cex=0.6, add = T)
 
 - 2 Vecinos
 
-```{r}
+```{r ,include=FALSE}
 # kNN con 2 vecinos
 temp9_nb <- knn2nb(knearneigh(coords, k=2), row.names=IDs)
 plot(shp, axes=TRUE, border="gray")
@@ -219,7 +220,7 @@ plot(temp9_nb, coordinates(temp), pch=19, cex=0.6, add = T)
 
 - 4 Vecinos
 
-```{r}
+```{r ,include=FALSE}
 # kNN con 4 vecinos
 temp10_nb <- knn2nb(knearneigh(coords, k=4), row.names=IDs)
 plot(shp, axes=TRUE, border="gray")
@@ -227,11 +228,18 @@ plot(temp10_nb, coordinates(temp), pch=19, cex=0.6, add = T)
 ```
 
 
-```{r}
-dsts <- unlist(nbdists(temp8_nb, coords))
-temp11_nb <- dnearneigh(coords, d1=0, d2=0.75*max(dsts), row.names=IDs)
+```{r ,include=FALSE}
+#reina
+dsts <- unlist(nbdists(temp1_nb, coords))
+temp12_nb <- dnearneigh(coords, d1=0, d2=0.75*max(dsts), row.names=IDs)
 plot(shp, axes=TRUE, border="gray")
-plot(temp11_nb, coordinates(temp), pch=19, cex=0.6, add = T)
+plot(temp12_nb, coordinates(temp), pch=19, cex=0.6, add = T)
+
+#torre
+dsts <- unlist(nbdists(temp2_nb, coords))
+temp13_nb <- dnearneigh(coords, d1=0, d2=0.75*max(dsts), row.names=IDs)
+plot(shp, axes=TRUE, border="gray")
+plot(temp13_nb, coordinates(temp), pch=19, cex=0.6, add = T)
 
 ```
 
@@ -241,7 +249,7 @@ Pesos
 
 1. Estandarización por fila
 
-```{r}
+```{r,include=FALSE}
 # Reina
 temp1_nb_W=nb2listw(temp1_nb)
 temp1_nb_W
@@ -250,41 +258,143 @@ temp1_nb_W
 temp2_nb_W=nb2listw(temp2_nb)
 temp2_nb_W
 
-# kNN con 1 vecino
-temp8_nb_W=nb2listw(temp8_nb)
-temp8_nb_W
-
-# kNN con 2 vecinos
-temp9_nb_W=nb2listw(temp9_nb)
-temp9_nb_W
-
-# kNN con 4 vecinos
-temp10_nb_W=nb2listw(temp10_nb)
-temp10_nb_W
 ```
 
 
-1. Binario
+2. Binario
 
-```{r}
+```{r,include=FALSE}
 # Reina
 temp1_nb_B=nb2listw(temp1_nb,style = "B")
-
+summary(unlist(temp1_nb_B$weights))
+summary(sapply(temp1_nb_B$weights, sum))
 # Torre
 temp2_nb_B=nb2listw(temp2_nb,style = "B")
+summary(unlist(temp2_nb_B$weights))
+summary(sapply(temp2_nb_B$weights, sum))
 
-# kNN con 1 vecino
-temp8_nb_B=nb2listw(temp8_nb,style = "B")
-
-# kNN con 2 vecinos
-temp9_nb_B=nb2listw(temp9_nb,style = "B")
-
-# kNN con 4 vecinos
-temp10_nb_B=nb2listw(temp10_nb,style = "B")
 ```
 
 
-```{r}
+IDW
+```{r,include=FALSE}
+# Reina
+dsts <- nbdists(temp1_nb, coordinates(temp))
+idw <- lapply(dsts, function(x) 1/(x/1000))
+temp1_nb_idwB <- nb2listw(temp1_nb, glist=idw, style="B")
+summary(unlist(temp1_nb_idwB$weights))
+summary(sapply(temp1_nb_idwB$weights, sum))
+
+
+# Torre
+dsts <- nbdists(temp2_nb, coordinates(temp))
+idw <- lapply(dsts, function(x) 1/(x/1000))
+temp2_nb_idwB <- nb2listw(temp2_nb, glist=idw, style="B")
+summary(unlist(temp2_nb_idwB$weights))
+summary(sapply(temp2_nb_idwB$weights, sum))
+```
+
+
+REVISAR
+```{r,include=FALSE}
+#Reina
+pal <- brewer.pal(9, "Reds")
+oopar <- par(mfrow=c(1,3), mar=c(1,1,3,1)+0.1)
+z <- t(listw2mat(temp1_nb_W))
+brks <- c(0,0.1,0.143,0.167,0.2,0.5,1)
+nbr3 <- length(brks)-3
+image(1:81, 1:81, z[,ncol(z):1], breaks=brks, col=pal[c(1,(9-nbr3):9)],
+ main="W style", axes=FALSE)
+box()
+z <- t(listw2mat(temp1_nb_B))
+image(1:81, 1:81, z[,ncol(z):1], col=pal[c(1,9)], main="B style", axes=FALSE)
+box()
+z <- t(listw2mat(temp1_nb_idwB ))
+brks <- c(0,0.35,0.73,0.93,1.2,2.6)
+nbr3 <- length(brks)-3
+image(1:81, 1:81, z[,ncol(z):1], breaks=brks, col=pal[c(1,(9-nbr3):9)],
+ main="IDW B style", axes=FALSE)
+box()
+
+par(oopar)
+```
+
+
+
+
+Distancias
+
+```{r,include=FALSE}
+#reina
+Sy0_lw_D1 <- nb2listw(temp12_nb, style="B", zero.policy=TRUE)
+print(Sy0_lw_D1, zero.policy=TRUE)
+
+#torre
+Sy0_lw_D2 <- nb2listw(temp13_nb, style="B", zero.policy=TRUE)
+print(Sy0_lw_D2, zero.policy=TRUE)
+
+
+```
+
+
+
+
+Autocorrelacion Espacial
+
+```{r,include=FALSE}
+#reina
+
+set.seed(987)
+n <- length(temp1_nb)
+uncorr_x <- rnorm(n)
+rho <- 0.5
+autocorr_x <- invIrW(temp1_nb_W, rho) %*% uncorr_x
+
+
+
+# oopar <- par(mfrow=c(1,2), mar=c(4,4,3,2)+0.1)
+# plot(uncorr_x, lag(temp1_nb_W, uncorr_x), xlab="", cex.lab=0.8,
+#  ylab="spatial lag", main="Uncorrelated random variable", cex.main=0.8)
+# lines(lowess(uncorr_x, lag(temp1_nb_W, uncorr_x)), lty=2, lwd=2)
+# plot(autocorr_x, lag(temp1_nb_W, autocorr_x),
+#  xlab="", ylab="",
+#  main="Autocorrelated random variable", cex.main=0.8, cex.lab=0.8)
+# lines(lowess(autocorr_x, lag(temp1_nb_W, autocorr_x)), lty=2, lwd=2)
+
+moran.test(uncorr_x, listw=temp1_nb_W)
+moran.test(autocorr_x, listw=temp1_nb_W)
+
+lm.morantest(lm(temp$llamadas_10mil ~ 1, temp), listw=temp1_nb_W)
+
+```
+
+
+
+```{r,include=FALSE}
+#torre
+
+set.seed(987)
+n <- length(temp2_nb)
+uncorr_x <- rnorm(n)
+rho <- 0.5
+autocorr_x <- invIrW(temp2_nb_W, rho) %*% uncorr_x
+
+
+
+# oopar <- par(mfrow=c(1,2), mar=c(4,4,3,2)+0.1)
+# plot(uncorr_x, lag(temp1_nb_W, uncorr_x), xlab="", cex.lab=0.8,
+#  ylab="spatial lag", main="Uncorrelated random variable", cex.main=0.8)
+# lines(lowess(uncorr_x, lag(temp1_nb_W, uncorr_x)), lty=2, lwd=2)
+# plot(autocorr_x, lag(temp1_nb_W, autocorr_x),
+#  xlab="", ylab="",
+#  main="Autocorrelated random variable", cex.main=0.8, cex.lab=0.8)
+# lines(lowess(autocorr_x, lag(temp1_nb_W, autocorr_x)), lty=2, lwd=2)
+
+moran.test(uncorr_x, listw=temp2_nb_W)
+moran.test(autocorr_x, listw=temp2_nb_W)
+
+lm.morantest(lm(temp$llamadas_10mil ~ 1, temp), listw=temp2_nb_W)
+
 
 ```
 
