@@ -1,0 +1,307 @@
+---
+title: "Proyecto 4 - Intoxicaciones por pesticidas en Costa Rica durante el periodo 2007 al 2014"
+author: "Andrés Arguedas Leiva - Natalia Díaz Ramírez"
+date: "29 Noviembre 2018"
+output: html_document
+---
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,message = FALSE,warning = FALSE)
+library(dplyr)
+library(tidyr)
+library(forcats)
+library(ggplot2)
+library(lubridate)
+library(ggrepel)
+library(foreign)
+library(spatstat)
+library(raster)
+library(rgdal)
+library(spdep)
+```
+
+# Introducción
+
+El objetivo es determinar si existe correlación espacial para los casos de intoxicaciones por pesticidas, tomando en cuenta el sexo,edad,causa de intoxicación y ruta de ingreso del pesticida.
+
+La pregunta de investigación planteada es ¿Existen conglomerados que se puedan localizar geográficamente por cantones para los casos de intoxicaciones por pesticidas?
+
+
+# Metodología
+
+Los datos se obtuvieron de los registros de consultas telefónicas del Centro Nacional de Control de Intoxicaciones. El proceso de registro de los casos de intoxicaciones se da por medio de llamadas telefónicas, estas pueden ser realizadas por profesionales en el área de salud como médicos y paramédicos o también por personas particulares. Un farmacéutico especializado en toxicología es el encargado de registrar la información referente al caso de la persona intoxicada en una hoja de registro de consulta toxicológicas, posteriormente se procesa la información de manera digital.
+
+Se cuenta con 11038 casos de intoxicaciones durante el 2007 al 2014.
+
+Los datos se analizaron mediante métodos y modelos de áreas. Los datos fueron procesados mediante el software R, en la interfaz gráfica RStudio y se usaron las bibliotecas ...
+
+
+# Resultados
+
+```{r,include=FALSE}
+
+#####################
+#Limpieza de datos
+#####################
+
+base <- read.spss("datos/base-descriptivo.sav")
+base <- as.data.frame(base)
+
+#mezclo: si mezclo mas de una sustancia o no 
+#causarec: hace regerencia a la causa de la intoxicacion como tentativa suicida, accidental,ocupacional, mal uso(por ejemplo cuando no usan la debida proteccion en ropa o lentes)
+#rutarec: el medio por el que se dio la intoxicacion, ingestion, inhalacion, etc
+
+#dejar solo variables de interes
+base <- base[,c(1:4, 6, 7, 14, 19, 20)]
+colnames(base) <- c("ID", "anio", "provinciarec", "cantonrec", "grupo_edad", "sexo", "mezclo", "causarec", "rutarec")
+
+#Pasa a otra variable el canton ya que esta codificada como factores
+base_temp <- base %>% mutate(Canton = as.character(cantonrec))
+base_temp <- base_temp %>% dplyr::select(-cantonrec)
+#Modifica el nombre de algunos cantones para poder unirlo con las otras bases del paquete ggcr(este da el mapa de Costa Rica para poder graficarlo)
+base_temp <- base_temp %>% mutate(Canton = ifelse(Canton == "LeÃ³n CortÃ©s Castro", "Leon Cortes",
+                                                  ifelse(Canton == "VÃ¡zquez de Coronado", "Vazquez De Coronado",
+                                                         ifelse(Canton == "Montes de Oro", "Montes De Oro",
+                                                                ifelse(Canton == "Montes de Oca","Montes De Oca",
+                                                                       Canton)))))
+
+
+#quitar tildes en variable provincia
+base_temp <- base_temp %>% mutate(Provincia = chartr('áéíóúñ', 'aeioun', provinciarec))
+base_temp <- base_temp %>% dplyr::select(-provinciarec)
+#quitar tildes en variable canton
+base_temp <- base_temp %>% mutate(Canton = chartr('áéíóúñ', 'aeioun', Canton))
+base_temp <- base_temp %>% filter(!(Canton == "99" | Canton == "Extranjero"))
+
+#agregar la poblacion segun el censo 2011 por canton
+#leer datos del censo
+censo <- read.csv("datos/censo_inec_2011.csv", stringsAsFactors = F, encoding = "UTF-8")
+
+#selecciona las variables provincia, canton, distritos y poblacion
+censo <- censo %>% dplyr::select(Provincia, Canton, Distrito, Poblacion_Total)
+#quitar tildes en variable provincia
+censo <- censo %>% mutate(Provincia = chartr('áéíóúñ', 'aeioun', Provincia))
+#quitar tildes en variable canton
+censo <- censo %>% mutate(Canton = chartr('áéíóúñ', 'aeioun', Canton))
+
+#Cambia algunos nombres para luego unir con otras bases del paquete ggcr
+censo2 <- censo %>% mutate(Canton = ifelse(Canton == "Ca~nas", "Canas",
+                                           ifelse(Canton == "Leon Cort'es Castro","Leon Cortes",
+                                                  ifelse(Canton == "Perez Zeled'on", "Perez Zeledon",
+                                                         ifelse(Canton == "Vazquez de Coronado", "Vazquez De Coronado",
+                                                                ifelse(Canton == "Montes de Oro", "Montes De Oro",
+                                                                       ifelse(Canton == "Montes de Oca", "Montes De Oca",
+                                                                              Canton)))))))
+
+#poblacion por canton
+censo2 <- censo2 %>% 
+  group_by(Provincia, Canton) %>%
+  mutate(poblacion = sum(Poblacion_Total))
+#selecciona variables de interes y elimina duplicados
+censo2 <- censo2 %>% 
+  dplyr::select(Provincia, Canton, poblacion) %>% 
+  distinct(Provincia, Canton, .keep_all=T)
+#ordena por provincia y canton
+censo2 <- censo2 %>% arrange(Provincia, Canton)
+
+#unir casos con censo
+base2 <- merge(base_temp, censo2, by = c("Provincia", "Canton"), all.x = F)
+base2 <- base2 %>% mutate(Canton = ifelse(Canton == "Canas", "CaÃ±as", Canton))
+
+#cantidad de intoxicaciones por canton
+base_temp <- base2 %>% 
+  group_by(Canton) %>%
+  mutate(intoxicaciones = n())
+
+#selecciona variables de interes y elimina duplicados
+base_temp <- base_temp %>% 
+  dplyr::select(Provincia, Canton, intoxicaciones, poblacion) %>% 
+  distinct(Canton, .keep_all = T)
+
+#calcula la cantidad por cada diezmil habitantes
+base_temp <- base_temp %>% mutate(llamadas_10mil = round((intoxicaciones / poblacion) * 10000, 4))
+
+
+
+# Cambiar shapefile para eliminar Isla del Coco
+s <- shapefile("CRI_adm/CRI_adm2.shp")
+sub <- crop(s, extent(-88, -82, 7, 12))
+#plot(sub, axes = T, border = 'gray')
+shapefile(sub, 'datos/cantones.shp',overwrite=TRUE)
+
+### Load a shape file and merge it with a csv
+### Author: Jose Gonzalez 
+### www.jose-gonzalez.org
+
+# This script shows how to load a shapefile, merge it with a csv and save it with the proper encoding
+### Load rgdal
+#require(rgdal)
+# Load shapefile using "UTF-8". Notice the "." is the directory and the shapefile name 
+# has no extention
+shp  <- readOGR("datos", "cantones", stringsAsFactors=FALSE, encoding="UTF-8")
+# Explore with a quick plot
+#plot(shp, axes=TRUE, border="gray")
+
+# Cambio de nombres de los cantones
+shp$NAME_2[shp$NAME_2 %in% setdiff(unique(shp$NAME_2), unique(base_temp$Canton))] <- c("Zarcero", "Poas", "San Ramon", "Jimenez", "La Union", "Paraiso","CaÃ±as", "Tilaran", "Belen", "Santa Barbara", "Sarapiqui", "Guacimo", "Limon", "Pococi", "Montes De Oro", "Aserri", "Escazu", "Leon Cortes","Montes De Oca", "Perez Zeledon", "San Jose", "Tarrazu", "Tibas","Vazquez De Coronado")
+
+# Verifiquemos que se cambió
+#setdiff(unique(shp$NAME_2), unique(base_temp$Canton))
+
+# Merge shapefile and csv
+temp  <- merge(shp, base_temp, by.x="NAME_2", by.y="Canton") 
+
+# The shapefile behaves as a data.frame. Explore a bit
+head(temp)
+
+#
+spplot(temp, "intoxicaciones")
+
+
+```
+
+
+**Vecinos en el espacio**
+
+
+1. Movimientos de Ajedrez
+
+
+- Reina
+
+```{r}
+
+#library(spdep)
+
+coords <- coordinates(temp)
+IDs <- row.names(temp)
+
+# Reina
+temp1_nb <- poly2nb(temp)
+plot(shp, axes=TRUE, border="gray")
+plot(temp1_nb, coordinates(temp), pch = 19, cex = 0.6, add = T)
+```
+
+- Torre
+
+```{r}
+# Torre
+temp2_nb <- poly2nb(temp, queen = F)
+plot(shp, axes=TRUE, border="gray")
+plot(temp2_nb, coordinates(temp), pch = 19, cex = 0.6, add = T)
+```
+
+
+2. Por Distancias
+
+- 1 Vecino
+
+```{r}
+# kNN con 1 vecino
+temp8_nb <- knn2nb(knearneigh(coords, k=1), row.names=IDs)
+plot(shp, axes=TRUE, border="gray")
+plot(temp8_nb, coordinates(temp), pch=19, cex=0.6, add = T)
+
+```
+
+- 2 Vecinos
+
+```{r}
+# kNN con 2 vecinos
+temp9_nb <- knn2nb(knearneigh(coords, k=2), row.names=IDs)
+plot(shp, axes=TRUE, border="gray")
+plot(temp9_nb, coordinates(temp), pch=19, cex=0.6, add = T)
+
+```
+
+- 4 Vecinos
+
+```{r}
+# kNN con 4 vecinos
+temp10_nb <- knn2nb(knearneigh(coords, k=4), row.names=IDs)
+plot(shp, axes=TRUE, border="gray")
+plot(temp10_nb, coordinates(temp), pch=19, cex=0.6, add = T)
+```
+
+
+```{r}
+dsts <- unlist(nbdists(temp8_nb, coords))
+temp11_nb <- dnearneigh(coords, d1=0, d2=0.75*max(dsts), row.names=IDs)
+plot(shp, axes=TRUE, border="gray")
+plot(temp11_nb, coordinates(temp), pch=19, cex=0.6, add = T)
+
+```
+
+
+
+Pesos
+
+1. Estandarización por fila
+
+```{r}
+# Reina
+temp1_nb_W=nb2listw(temp1_nb)
+temp1_nb_W
+
+# Torre
+temp2_nb_W=nb2listw(temp2_nb)
+temp2_nb_W
+
+# kNN con 1 vecino
+temp8_nb_W=nb2listw(temp8_nb)
+temp8_nb_W
+
+# kNN con 2 vecinos
+temp9_nb_W=nb2listw(temp9_nb)
+temp9_nb_W
+
+# kNN con 4 vecinos
+temp10_nb_W=nb2listw(temp10_nb)
+temp10_nb_W
+```
+
+
+1. Binario
+
+```{r}
+# Reina
+temp1_nb_B=nb2listw(temp1_nb,style = "B")
+
+# Torre
+temp2_nb_B=nb2listw(temp2_nb,style = "B")
+
+# kNN con 1 vecino
+temp8_nb_B=nb2listw(temp8_nb,style = "B")
+
+# kNN con 2 vecinos
+temp9_nb_B=nb2listw(temp9_nb,style = "B")
+
+# kNN con 4 vecinos
+temp10_nb_B=nb2listw(temp10_nb,style = "B")
+```
+
+
+```{r}
+
+```
+
+
+# Conclusiones
+
+
+
+
+#Referencias
+
+
+
+
+
+
+
+
+
+
