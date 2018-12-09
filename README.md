@@ -4,7 +4,7 @@
 
 ## Resumen
 
-Este repositorio contiene el código, datos y video de la presentación sobre el proyecto final del curso SP-1649 Tópicos de Estadística Espacial Aplicada: **Intoxicaciones por pesticidas, a nivel cantonal, en Costa Rica durante el periodo 2007 al 2014**, desarrollado por Andrés Arguedas y Natalia Díaz, como parte de la Maestría en Estadística de la Universidad de Costa Rica. El documento del informe final está disponible de forma abierta en Overleaf en el siguiente enlace: https://www.overleaf.com/read/wsbdrvgymtbz
+Este repositorio contiene el código y datos de la presentación sobre el proyecto final del curso SP-1649 Tópicos de Estadística Espacial Aplicada: **Intoxicaciones por pesticidas, a nivel cantonal, en Costa Rica durante el periodo 2007 al 2014**, desarrollado por Andrés Arguedas y Natalia Díaz, como parte de la Maestría en Estadística de la Universidad de Costa Rica. El documento del informe final está disponible de forma abierta en Overleaf en el siguiente enlace: https://www.overleaf.com/read/wsbdrvgymtbz y la presentación está disponible en el siguiente enlace: https://www.youtube.com/watch?v=-eERWmg0teo&feature=youtu.be
 
 - [Intoxicaciones por pesticidas en Costa Rica 2007-2014](#intoxicaciones-por-pesticidas-en-costa-rica-2007-2014)
   - [Resumen](#resumen)
